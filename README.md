@@ -102,10 +102,29 @@ Hook Event → stdin JSON → dispatcher.sh → parse with jq → append to Obsi
 
 ```
 SuperMemory/
-├── Index.md          # Auto-updated MOC
-├── Sessions/         # One .md per conversation
+├── Index.md          # Keyword → topic lookup (grep target, 100 line cap)
+├── Topics/           # Distilled knowledge (30 line cap per file)
+│   ├── DMS-Debugging.md
+│   ├── QuickSight-Reports.md
+│   └── ...
+├── Sessions/         # Raw session logs (auto-captured by hooks)
 ├── Agents/           # One .md per agent spawn
-└── Errors/           # Auto-detected errors
+├── Errors/           # Auto-detected errors
+└── Archive/          # Sessions older than 30 days (via rotate.sh)
+```
+
+### Two-tier memory
+
+1. **Raw layer** (automatic via hooks) — every event captured in `Sessions/`
+2. **Knowledge layer** (maintained by Claude at session end) — distilled facts in `Topics/`
+
+Retrieval cost: 1 grep on Index.md + 1 read of a topic file = **~800 tokens**. Not thousands.
+
+### Session rotation
+
+```bash
+bash rotate.sh                    # Archive sessions older than 30 days
+bash rotate.sh /path/to/vault 60  # Custom path and days
 ```
 
 All notes use `[[wiki links]]` for Obsidian graph connectivity.

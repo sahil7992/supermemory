@@ -109,6 +109,20 @@ IDX
   fi
 
   sm_safe_append "$index_file" "- [[${session_filename}]] — \`${cwd}\` | started $(date '+%H:%M')" "$SESSION_ID"
+
+  # Cap Recent Sessions to last 10 entries
+  local sessions_start sessions_end total_sessions
+  sessions_start=$(grep -n '## Recent Sessions' "$index_file" | head -1 | cut -d: -f1)
+  if [ -n "$sessions_start" ]; then
+    total_sessions=$(tail -n +$((sessions_start + 1)) "$index_file" | grep -c '^- \[\[' || true)
+    if [ "$total_sessions" -gt 10 ]; then
+      # Remove oldest entries (keep last 10)
+      local excess=$((total_sessions - 10))
+      local first_session_line=$((sessions_start + 2))
+      sed -i '' "${first_session_line},$((first_session_line + excess - 1))d" "$index_file" 2>/dev/null || \
+        sed -i "${first_session_line},$((first_session_line + excess - 1))d" "$index_file"
+    fi
+  fi
 }
 
 # ============================================================
