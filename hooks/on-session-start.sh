@@ -18,10 +18,14 @@ sm_peer_sweep
 INDEX="$SM_VAULT/SuperMemory/Index.md"
 PROJECTS_DIR="$SM_VAULT/Projects"
 
-# --- Recent sessions: last 2 actual entries from Index.md ---
+# --- Recent sessions: last 2 entries, sanitized + truncated to 180 chars ---
+# Strip UTF-8 (em-dashes, smart quotes) so byte-truncation can't produce invalid sequences.
 RECENT=""
 if [ -r "$INDEX" ]; then
-  RECENT=$(grep -E '^- \[\[' "$INDEX" 2>/dev/null | head -2 | sed 's/^/  /')
+  RECENT=$(grep -E '^- \[\[' "$INDEX" 2>/dev/null \
+    | head -2 \
+    | LC_ALL=C sed 's/[^[:print:][:space:]]//g; s/  */ /g' \
+    | awk '{ s=$0; if (length(s)>180) s=substr(s,1,180) "..."; print "  " s }')
 fi
 
 # --- cwd-matching hub: scan Projects/*.md for `directory:` matching CWD ---
@@ -33,7 +37,7 @@ if [ -n "$CWD" ] && [ -d "$PROJECTS_DIR" ]; then
     case "$CWD" in
       "$hub_dir"*)
         hub_name=$(basename "$hub" .md)
-        hub_summary=$(grep -E '^> ' "$hub" 2>/dev/null | head -1 | sed 's/^> //')
+        hub_summary=$(grep -E '^> ' "$hub" 2>/dev/null | head -1 | sed 's/^> //' | LC_ALL=C sed 's/[^[:print:][:space:]]//g' | awk '{ if (length($0)>140) print substr($0,1,140) "..."; else print $0 }')
         HUB_LINE="  [[Projects/$hub_name]] -- $hub_summary"
         break
         ;;
