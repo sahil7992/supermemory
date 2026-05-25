@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# SuperMemory v2 -- wiki revival (one-shot)
+# SuperMemory -- wiki revival (one-shot)
 # Walks ~/.claude/projects/-Users-sahilpambhar/memory/*.md and scaffolds wiki hubs.
 # Strategy: don't migrate content. Create stub hubs that REFERENCE Claude memory as source.
 # The auto-summarizer fills in "Recent sessions" over time as sessions touch each entity.
@@ -15,7 +15,7 @@ MEM="$HOME/.claude/projects/-Users-sahilpambhar/memory"
 TPL="$SCRIPT_DIR/../templates"
 DRY_RUN="${DRY_RUN:-0}"
 
-echo "Revive Wiki -- SuperMemory v2"
+echo "Revive Wiki -- SuperMemory"
 echo "  Vault:  $VAULT"
 echo "  Memory: $MEM"
 echo "  Dry-run: $DRY_RUN"
@@ -250,7 +250,7 @@ write_home() {
 
 > **Start here → [[index]] · [[SuperMemory/Index]]**
 
-This vault is the persistent knowledge layer for Sahil's Claude Code sessions. SuperMemory v2 auto-maintains it.
+This vault is the persistent knowledge layer for Sahil's Claude Code sessions. SuperMemory auto-maintains it.
 
 ## Quick Links
 
@@ -264,7 +264,7 @@ This vault is the persistent knowledge layer for Sahil's Claude Code sessions. S
 ## How it works
 
 1. **You work in Claude Code as normal.** Hooks run automatically in the background.
-2. **SessionEnd / PreCompact / `/recap`** triggers the headless summarizer (Haiku 4.5) to write a session file + update relevant hubs here.
+2. **SessionEnd / PreCompact / `/snapshot`** triggers the headless summarizer (Haiku 4.5) to write a session file + update relevant hubs here.
 3. **SessionStart** injects a tiny breadcrumb so a new session knows what was just done -- without dragging full history into context.
 4. **`/peers`** shows what other Claude sessions are doing right now (cross-tmux-pane visibility).
 
@@ -311,7 +311,7 @@ if [ "$DRY_RUN" != "1" ]; then
   {
     [ ! -s "$LOG" ] && echo "# Operations Log\n"
     echo ""
-    echo "## [$TODAY] revive | SuperMemory v2 wiki revival"
+    echo "## [$TODAY] revive | SuperMemory wiki revival"
     echo "- Scaffolded hubs from \`~/.claude/projects/-Users-sahilpambhar/memory/\`"
     echo "- Fixed Home.md dead links (Sahil Pambhar, Curantis AI now resolvable)"
     echo "- See [[SuperMemory/2026-05-24_supermemory-v2-build]] for context"

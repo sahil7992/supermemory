@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# SuperMemory v2 -- installer
+# SuperMemory -- installer
 # Wires Claude Code hooks + slash commands + templates into the user's environment.
 # Usage: bash install.sh [vault_path]
 
@@ -11,7 +11,7 @@ HOOKS_DST="$HOME/.claude/hooks/supermemory"
 CMDS_DST="$HOME/.claude/commands"
 SETTINGS="$HOME/.claude/settings.json"
 
-echo "SuperMemory v2 -- installer"
+echo "SuperMemory -- installer"
 echo "  Repo:   $REPO_DIR"
 echo "  Vault:  $VAULT"
 echo ""
@@ -117,7 +117,7 @@ Next steps:
   • Restart Claude Code so hooks load.
   • Optional: bash $REPO_DIR/scripts/revive-wiki.sh    (scaffolds wiki hubs)
   • Optional: bash $REPO_DIR/scripts/backfill.sh       (catches up past sessions)
-  • Inside a session, run: /recap   /peers
+  • Inside a session, run: /snapshot   /peers
   • Logs: $VAULT/.logs/
 
 DONE

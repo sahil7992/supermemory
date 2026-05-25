@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# SuperMemory v2 -- SessionEnd hook
+# SuperMemory -- SessionEnd hook
 # Removes peer registry entry, then triggers summarization.
 
 set -u

@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# SuperMemory v2 -- shared helpers
+# SuperMemory -- shared helpers
 # Sourced by all hooks. Provides: atomic writes, paths, jq sanity, peer-registry I/O.
 
 set -u

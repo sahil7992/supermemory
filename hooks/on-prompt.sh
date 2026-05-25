@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# SuperMemory v2 -- UserPromptSubmit hook
+# SuperMemory -- UserPromptSubmit hook
 # Updates peer registry with last_prompt and bumps last_active. Cheap; no claude calls.
 
 set -u

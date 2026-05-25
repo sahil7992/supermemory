@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# SuperMemory v2 -- backfill summaries for the gap between latest Index entry and now.
+# SuperMemory -- backfill summaries for the gap between latest Index entry and now.
 # Walks ~/.claude/projects/**/*.jsonl with mtime after the latest date in SuperMemory/Index.md,
 # fires on-summarize.sh against each. Sequential to avoid API thrashing.
 

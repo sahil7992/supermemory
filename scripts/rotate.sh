@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# SuperMemory v2 -- archive sessions older than N days
+# SuperMemory -- archive sessions older than N days
 # Usage: bash rotate.sh [days_default_30] [vault_path]
 
 set -eu

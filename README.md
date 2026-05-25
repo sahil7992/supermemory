@@ -6,7 +6,6 @@
   <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-blue.svg" alt="License: MIT"></a>
   <img src="https://img.shields.io/badge/platform-macOS%20%7C%20Linux-lightgrey.svg" alt="macOS | Linux">
   <img src="https://img.shields.io/badge/claude--code-2.x-orange.svg" alt="Claude Code 2.x">
-  <img src="https://img.shields.io/badge/version-2.0-green.svg" alt="v2">
 </p>
 
 <p align="center">
@@ -17,15 +16,15 @@
 
 ## Why this exists
 
-Claude Code sessions are stateless. You close the terminal, the context is gone. Next session you paste "what we did last time" or re-explain everything.
+Claude Code sessions are stateless. You close the terminal and the context is gone. The next session you paste "what we did last time" or re-explain everything.
 
 The native fixes do not solve this:
 
-* `/resume` reloads a single past transcript, but uses thousands of tokens.
-* Built in `recap` shows a one line summary, ephemeral, in memory only.
-* `~/.claude/CLAUDE.md` is loaded every session, so adding context there bloats every future session.
+* `/resume` reloads a single past transcript but burns thousands of tokens to do it.
+* The built in idle recap is a one liner, in memory, ephemeral.
+* Stuffing context into `~/.claude/CLAUDE.md` works but inflates the eager load on every future session.
 
-supermemory builds an external graph in your Obsidian vault. Past sessions become wiki pages. New sessions read 500 bytes of breadcrumbs, then traverse the graph on demand. The graph compounds across sessions, the eager load stays small.
+supermemory builds an external graph in your Obsidian vault. Past sessions become wiki pages. New sessions read 500 to 1000 bytes of breadcrumbs and traverse the graph on demand. The graph compounds across sessions, the eager load stays small.
 
 ## The three pillars
 
@@ -37,12 +36,12 @@ Three triggers spawn a headless `claude` call with **Haiku 4.5** that reads the 
 |---|---|
 | `SessionEnd` | Session terminates (clear, resume, logout) |
 | `PreCompact` | Just before context compaction |
-| `/recap` | Manual mid session checkpoint |
+| `/snapshot` | Manual mid session checkpoint |
 
 The summarizer writes four things:
 
-1. `SuperMemory/YYYY-MM-DD_<slug>_raw.md`. Verbatim turn dump, tool calls collapsed to one line.
-2. `SuperMemory/YYYY-MM-DD_<slug>.md`. Structured summary (what happened, decisions, files changed, next session context).
+1. `SuperMemory/YYYY-MM-DD_<slug>_raw.md` -- the verbatim turn dump, tool calls collapsed to one line.
+2. `SuperMemory/YYYY-MM-DD_<slug>.md` -- a structured summary (what happened, decisions, files changed, next session context).
 3. One line appended to `SuperMemory/Index.md`.
 4. One bullet appended to each entity hub the session touched (`Projects/X.md`, `People/Y.md`, etc.).
 
@@ -50,20 +49,20 @@ The summarizer writes four things:
 
 ### 2. Live cross session visibility
 
-Each running session writes `~/.claude/sessions/<id>.json` (cwd, last prompt, files being edited, started_at, last_active). Three cheap bash hooks keep it current.
+Each running session writes `~/.claude/peers/<id>.json` (cwd, last prompt, files being edited, started_at, last_active). Three cheap bash hooks keep it current.
 
 Any Claude can run **`/peers`** to see what other Claude sessions are doing right now. Useful when you run multiple `claude` instances in different tmux panes and want them to coordinate.
 
 ### 3. Minimum eager load
 
-`SessionStart` injects roughly 500 to 650 bytes of `additionalContext`:
+`SessionStart` injects roughly 500 to 1000 bytes of `additionalContext`:
 
 * Last 2 session one liners from `Index.md`
 * The project hub matching your `cwd` (one line summary)
 * Active peer sessions (one line each)
 * A breadcrumb telling Claude to lazy load via wikilinks, not pre fetch
 
-That is it. No bulk dump. No 10 KB of "recent history" pasted into every prompt.
+No bulk dump. No 10 KB of "recent history" pasted into every prompt.
 
 ## Vault layout
 
@@ -74,11 +73,11 @@ That is it. No bulk dump. No 10 KB of "recent history" pasted into every prompt.
 ├── log.md                 chronological ops log
 ├── SuperMemory/           session chronicle
 │   ├── Index.md
-│   ├── 2026-05-24_supermemory-v2-build.md
-│   └── 2026-05-24_supermemory-v2-build_raw.md
-├── Projects/              hub pages (KaalSync, Curantis AI, ...)
-├── People/                hub pages (Sahil Pambhar, Rakesh, ...)
-├── Concepts/              domain concepts (Jasper Reports, ...)
+│   ├── 2026-05-24_supermemory-build.md
+│   └── 2026-05-24_supermemory-build_raw.md
+├── Projects/              hub pages (one per project)
+├── People/                hub pages (one per person)
+├── Concepts/              domain concepts
 ├── Work/Tickets/          per ticket hubs
 ├── Playbooks/             step by step guides
 ├── Feedback/              behavior corrections
@@ -122,7 +121,7 @@ Restart Claude Code so the hooks load.
 If you have been using Claude Code without supermemory and want to backfill:
 
 ```bash
-bash scripts/revive-wiki.sh   # scaffolds hubs from ~/.claude memory files
+bash scripts/revive-wiki.sh   # scaffolds hubs from existing ~/.claude memory files
 bash scripts/backfill.sh      # summarizes recent .jsonl transcripts
 ```
 
@@ -130,7 +129,7 @@ bash scripts/backfill.sh      # summarizes recent .jsonl transcripts
 
 | Command | What it does |
 |---|---|
-| `/recap` | Snapshot the current session to SuperMemory immediately |
+| `/snapshot` | Capture the current session to SuperMemory now (mid-session checkpoint) |
 | `/peers` | Show what other running Claude sessions are doing right now |
 
 ## Hooks installed
@@ -161,21 +160,9 @@ bash uninstall.sh
 
 Removes hooks, slash commands, and strips entries from `~/.claude/settings.json`. Your vault content stays intact.
 
-## How v2 differs from v1
-
-| | v1 (deprecated, `v1-archive` tag) | v2 |
-|---|---|---|
-| Hooks | 6 hooks logging every event | 5 hooks, only 2 do heavy work |
-| Output | Verbatim event dump | Curated summary plus raw extract |
-| Cost | Bash only, but very chatty | Bash for peers (free), Haiku for summaries (pennies per session) |
-| Eager load at SessionStart | Nothing | ~500 bytes of targeted breadcrumbs |
-| Wiki | Promised "Topics/" never built | Hubs auto maintained across `Projects/`, `People/`, etc. |
-| Cross session visibility | None | `/peers` plus SessionStart injection |
-| Graph navigability | Frequent dangling links | Append only invariant plus `lint.sh` script |
-
 ## Architecture
 
-See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) for the full design rationale, the append only invariant, the peer registry protocol, and the token budget math.
+See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) for the design rationale, the append only invariant, the peer registry protocol, the token budget math, and failure modes.
 
 ## Cost
 
@@ -185,7 +172,7 @@ Per session at typical use:
 |---|---|
 | Bash hooks (SessionStart, peers, etc.) | $0.00, sub millisecond |
 | Headless Haiku 4.5 summarizer | $0.005 to $0.02 per session, runs in background |
-| SessionStart injection | ~500 bytes per session start |
+| SessionStart injection | ~500 to 1000 bytes per session start |
 
 A heavy day with 10 sessions: roughly 5 to 20 cents in Haiku spend.
 
@@ -201,13 +188,16 @@ No. `install.sh` merges hook entries into `~/.claude/settings.json` using `jq`. 
 No. The summarizer only reads the current session's `.jsonl`. It appends to `Index.md`, `log.md`, and entity hubs without reading their existing content. This is the append only invariant.
 
 **Can I use a different model?**
-Edit `hooks/on-summarize.sh` and change `--model claude-haiku-4-5`. Any Claude model works; Haiku is the cheap default.
+Edit `hooks/on-summarize.sh` and change `--model claude-haiku-4-5`. Any Claude model works. Haiku is the cheap default.
 
 **What if multiple sessions write Index.md at the same time?**
 Hooks use `lockf` on macOS or `flock` on Linux for atomic appends. No race conditions.
 
 **Where do logs go?**
 `$SUPERMEMORY_VAULT_DIR/.logs/YYYYMMDD.log` for hook output, `YYYYMMDD-summarizer.log` for headless Haiku output.
+
+**Does `/snapshot` collide with the built in Claude Code recap?**
+No. Claude Code's built in recap is the passive one liner that fires when your terminal idles for 3 minutes -- it is not a slash command. `/snapshot` is a separate, explicit, on demand checkpoint that writes structured summaries to your vault.
 
 ## Repo layout
 
@@ -220,7 +210,7 @@ supermemory/
 ├── assets/logo.svg
 ├── docs/
 │   └── ARCHITECTURE.md
-├── hooks/                  the runtime hooks
+├── hooks/
 │   ├── lib.sh
 │   ├── on-session-start.sh
 │   ├── on-summarize.sh
@@ -228,17 +218,17 @@ supermemory/
 │   ├── on-edit.sh
 │   └── on-session-end.sh
 ├── prompts/
-│   └── summarizer.md       Haiku prompt
+│   └── summarizer.md
 ├── commands/
-│   ├── recap.md
+│   ├── snapshot.md
 │   └── peers.md
-├── templates/              page templates Haiku writes from
+├── templates/
 │   ├── session.md
 │   ├── project-hub.md
 │   ├── person-hub.md
 │   ├── concept-hub.md
 │   └── ticket-hub.md
-└── scripts/                one shot maintenance
+└── scripts/
     ├── revive-wiki.sh
     ├── backfill.sh
     ├── lint.sh

@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# SuperMemory v2 -- wiki health check
+# SuperMemory -- wiki health check
 # Detects: dead wikilinks, orphan pages, stale hubs (no session ref in 30 days).
 
 set -u

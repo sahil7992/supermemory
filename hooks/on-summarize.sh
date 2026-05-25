@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
-# SuperMemory v2 - summarization hook
-# Used by: SessionEnd, PreCompact, /recap slash command.
+# SuperMemory - summarization hook
+# Used by: SessionEnd, PreCompact, /snapshot slash command.
 # Strategy: pre-extract the .jsonl into a markdown raw dump (so headless Claude
 # can read it without needing access to ~/.claude/projects/), then spawn
 # headless Haiku to write the beautified summary + Index/hub appends.

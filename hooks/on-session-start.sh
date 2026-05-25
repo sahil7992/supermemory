@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# SuperMemory v2 -- SessionStart hook
+# SuperMemory -- SessionStart hook
 # Outputs ~500-650 bytes of additionalContext: recent sessions + cwd-matching hub + active peers.
 
 set -u
@@ -72,7 +72,7 @@ $HUB_LINE"
 Active peers:$PEERS"
 CONTEXT="$CONTEXT
 
-To recall: \`grep \$VAULT/SuperMemory/Index.md\` for keywords, then read the specific session file. Don't pre-load. To checkpoint mid-session: \`/recap\`. To see live peers: \`/peers\`."
+To recall: \`grep \$VAULT/SuperMemory/Index.md\` for keywords, then read the specific session file. Don't pre-load. To checkpoint mid-session: \`/snapshot\`. To see live peers: \`/peers\`."
 
 # Emit hook output.
 if sm_have_jq; then

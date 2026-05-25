@@ -30,7 +30,7 @@ Three hooks share a single shell script `on-summarize.sh`:
 |---|---|---|
 | `SessionEnd` | `SessionEnd` | Session terminates (clear, resume, logout, etc.) |
 | `PreCompact` | `PreCompact` | Just before Claude Code compacts context |
-| Slash command `/recap` | `manual` | User or Claude explicitly requests a checkpoint |
+| Slash command `/snapshot` | `manual` | User or Claude explicitly requests a checkpoint |
 
 The hook script:
 
@@ -156,10 +156,9 @@ Compare to the baseline (no supermemory):
 | Vector DB sidecar | Overkill; markdown grep plus wikilinks works fine at this scale |
 | `--resume` past transcripts | High token cost per resume |
 | Pure native recap | Ephemeral, not persisted, single line |
-| One hook per event (v1) | Logs noise rather than knowledge |
 
 ## Future work (not in v2)
 
 * Embedding based retrieval inside the vault for "find sessions about X" without keyword grep.
-* Auto detection of when Claude itself should call `/recap` mid session.
+* Auto detection of when Claude itself should call `/snapshot` mid session.
 * Optional integration with an external memex service.
