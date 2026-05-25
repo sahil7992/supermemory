@@ -1,50 +1,58 @@
-# SuperMemory
+# SuperMemory v2
 
-Automatic logging of every Claude Code interaction to your Obsidian vault. Every prompt, tool call, agent spawn, and response — captured with zero manual effort.
+> Persistent, lazy-loaded knowledge graph for Claude Code sessions. Auto-writes session summaries to Obsidian; injects ~500 bytes of breadcrumbs at session start; lets parallel Claude sessions see each other in real time.
 
-## What it does
+**Status:** v2 (this branch). v1 (the noisy hook-spam approach) is preserved at the `v1-archive` tag and deprecated.
 
-SuperMemory uses Claude Code hooks to intercept every event in your sessions and write structured, wiki-linked markdown notes to your Obsidian vault:
+## What v2 does
 
-- **Session logs** — chronological timeline of every interaction in a conversation
-- **Agent notes** — atomic notes for each agent spawn with prompt and result
-- **Error notes** — auto-detected errors get their own linked note
-- **Auto-updated index** — MOC linking all sessions, sortable by date
+Three pillars:
 
-### Example session log
+### 1. Past sessions → auto-summarized into a graph
 
-```markdown
-# Session — 2026-04-09 14:30
+After every session (`SessionEnd`), before any context compaction (`PreCompact`), and on-demand (`/recap`), a headless `claude -p` call with **Haiku 4.5** reads the just-finished `.jsonl` transcript and writes:
 
-> **Session ID**: `abc123` | **Directory**: `/Users/me/project`
+- `SuperMemory/YYYY-MM-DD_<slug>_raw.md` — verbatim turn dump
+- `SuperMemory/YYYY-MM-DD_<slug>.md` — structured summary (what happened, decisions, files changed, next-session context)
+- One line appended to `SuperMemory/Index.md`
+- One bullet appended to each entity hub mentioned (`Projects/X.md`, `People/Y.md`, etc.)
 
-## Summary
-_Session in `/Users/me/project` | 47 events | Duration: 23m 15s_
+**Invariant:** the summarizer is append-only. It never reads prior wiki/SuperMemory content. This is the token discipline that keeps the system from blowing up as the vault grows.
 
-## Timeline
+### 2. Live cross-session visibility → peers registry
 
-### 14:30:03 — User Prompt
-> Build the authentication system
+Each running session writes a tiny `~/.claude/sessions/<id>.json` (cwd, last prompt, files being edited). Any Claude can call **`/peers`** to see what its peers are doing in other tmux panes — invaluable when running parallel agents or just multiple `claude` invocations.
 
-- `14:30:04` **Read** — src/auth.ts
-<details><summary>Result: Read — import express from...</summary>...</details>
+### 3. Minimal eager-load
 
-- `14:30:06` **Agent** — Research auth patterns
-  - See [[2026-04-09_14-30-06_Agent_Research_auth_patterns]]
+`SessionStart` injects only ~500-650 bytes of `additionalContext`: last 2 session one-liners + the project hub matching your `cwd` + active peer summaries. Claude is taught to **lazy-load** — grep `Index.md`, follow wikilinks on demand. No more pasting "what we did last time" into prompts.
 
----
-## Session End
-> **Duration**: 23m 15s | **Events**: 47
+## Vault structure
+
+```
+~/Documents/Obsidian Vault/
+├── Home.md
+├── index.md           — wiki catalog
+├── log.md             — chronological ops log
+├── SuperMemory/       — session chronicle (Index.md + per-session files)
+├── Projects/          — hub pages (e.g. KaalSync, Curantis AI)
+├── People/            — hub pages (e.g. Sahil Pambhar, Rakesh)
+├── Concepts/          — domain concepts
+├── Work/Tickets/      — per-ticket hubs
+├── Playbooks/         — step-by-step guides
+├── Feedback/          — behavior corrections
+├── Templates/         — page templates (Haiku reads these)
+└── Archive/           — sessions rotated out (>30 days)
 ```
 
 ## Requirements
 
-- [Claude Code](https://claude.ai/claude-code) CLI
-- [Obsidian](https://obsidian.md) (any version)
-- `jq` — JSON processor
-- `lockf` (macOS) or `flock` (Linux) — for atomic file writes
+- [Claude Code](https://www.anthropic.com/claude-code) CLI (`claude` on PATH)
+- [Obsidian](https://obsidian.md) for browsing — not strictly required, but the graph view is the payoff
+- `jq` (`brew install jq` / `apt install jq`)
+- `lockf` (macOS) or `flock` (Linux) — for atomic writes (optional but recommended)
 
-## Installation
+## Install
 
 ```bash
 git clone https://github.com/sahil7992/supermemory.git
@@ -52,111 +60,73 @@ cd supermemory
 bash install.sh
 ```
 
-**Custom vault path:**
-
+Custom vault path:
 ```bash
-bash install.sh "/path/to/your/vault/SuperMemory"
+bash install.sh "/path/to/your/Obsidian Vault"
 ```
 
-Then add to your `~/.zshrc` or `~/.bashrc`:
-
+Then add to `~/.zshrc`:
 ```bash
-export SUPERMEMORY_VAULT_DIR="/path/to/your/vault/SuperMemory"
+export SUPERMEMORY_VAULT_DIR="/path/to/your/Obsidian Vault"
 ```
 
-**Restart Claude Code** after installation (hooks load at session start).
+**Restart Claude Code** so hooks load.
 
-## Uninstallation
+## First-run revival (recommended)
+
+If you've been using Claude Code without SuperMemory:
+
+```bash
+bash scripts/revive-wiki.sh    # scaffolds hub pages from existing ~/.claude memory
+bash scripts/backfill.sh       # auto-summarizes recent .jsonl transcripts into SuperMemory
+```
+
+## Slash commands
+
+| Command | What it does |
+|---|---|
+| `/recap` | Snapshot current session to SuperMemory immediately (mid-session checkpoint) |
+| `/peers` | Show what other running Claude sessions are doing right now |
+
+## Hooks installed
+
+| Event | Hook | Purpose |
+|---|---|---|
+| `SessionStart` | `on-session-start.sh` | Inject breadcrumbs + register self in peer registry |
+| `UserPromptSubmit` | `on-prompt.sh` | Update peer registry with last prompt |
+| `PreToolUse(Edit\|Write)` | `on-edit.sh` | Track files being edited for peer visibility |
+| `PreCompact` | `on-summarize.sh` | Snapshot before context compaction |
+| `SessionEnd` | `on-session-end.sh` | Remove peer entry + trigger final summarization |
+
+Everything runs `async: true` — hooks return immediately, background spawns Haiku.
+
+## Maintenance
+
+```bash
+bash scripts/lint.sh      # Dead wikilinks, orphan pages, stale hubs
+bash scripts/rotate.sh    # Move sessions >30 days into Archive/
+bash scripts/backfill.sh  # Catch up after long offline period
+```
+
+## Uninstall
 
 ```bash
 bash uninstall.sh
 ```
 
-This removes hooks but keeps your Obsidian notes.
+Removes hooks + slash commands + strips entries from `settings.json`. Your vault content stays untouched.
 
-## How it works
+## How v2 differs from v1
 
-Six Claude Code hooks route to a single dispatcher script:
-
-| Hook Event | What it captures |
-|---|---|
-| `SessionStart` | Creates session log, initializes state |
-| `UserPromptSubmit` | Every user prompt |
-| `PreToolUse` | Every tool call (Read, Write, Bash, Agent, etc.) |
-| `PostToolUse` | Every tool result, including errors |
-| `Stop` | Session end, duration, event count |
-| `SubagentStop` | Agent completion with results |
-
-### Architecture
-
-```
-Hook Event → stdin JSON → dispatcher.sh → parse with jq → append to Obsidian .md
-```
-
-- Single dispatcher script handles all events (~15-25ms per invocation)
-- Session state tracked in `/tmp/supermemory_<session_id>`
-- Atomic writes via `lockf`/`flock` for concurrent safety
-- Scripts never return exit code 2 (which would block Claude)
-
-### Obsidian structure
-
-```
-SuperMemory/
-├── Index.md          # Keyword → topic lookup (grep target, 100 line cap)
-├── Topics/           # Distilled knowledge (30 line cap per file)
-│   ├── DMS-Debugging.md
-│   ├── QuickSight-Reports.md
-│   └── ...
-├── Sessions/         # Raw session logs (auto-captured by hooks)
-├── Agents/           # One .md per agent spawn
-├── Errors/           # Auto-detected errors
-└── Archive/          # Sessions older than 30 days (via rotate.sh)
-```
-
-### Two-tier memory
-
-1. **Raw layer** (automatic via hooks) — every event captured in `Sessions/`
-2. **Knowledge layer** (maintained by Claude at session end) — distilled facts in `Topics/`
-
-Retrieval cost: 1 grep on Index.md + 1 read of a topic file = **~800 tokens**. Not thousands.
-
-### Session rotation
-
-```bash
-bash rotate.sh                    # Archive sessions older than 30 days
-bash rotate.sh /path/to/vault 60  # Custom path and days
-```
-
-All notes use `[[wiki links]]` for Obsidian graph connectivity.
-
-## Manual configuration
-
-If you prefer to configure hooks manually, add this to `~/.claude/settings.json`:
-
-```json
-{
-  "hooks": {
-    "SessionStart": [
-      {"type": "command", "command": "bash ~/.claude/hooks/supermemory/dispatcher.sh SessionStart"}
-    ],
-    "UserPromptSubmit": [
-      {"type": "command", "command": "bash ~/.claude/hooks/supermemory/dispatcher.sh UserPromptSubmit"}
-    ],
-    "PreToolUse": [
-      {"matcher": ".*", "hooks": [{"type": "command", "command": "bash ~/.claude/hooks/supermemory/dispatcher.sh PreToolUse"}]}
-    ],
-    "PostToolUse": [
-      {"matcher": ".*", "hooks": [{"type": "command", "command": "bash ~/.claude/hooks/supermemory/dispatcher.sh PostToolUse"}]}
-    ],
-    "Stop": [
-      {"type": "command", "command": "bash ~/.claude/hooks/supermemory/dispatcher.sh Stop"}
-    ],
-    "SubagentStop": [
-      {"type": "command", "command": "bash ~/.claude/hooks/supermemory/dispatcher.sh SubagentStop"}
-    ]
-  }
-}
-```
+| | v1 (deprecated) | v2 |
+|---|---|---|
+| Hooks | 6 hooks logging every event | 5 hooks, only 2 do meaningful work |
+| Output | Verbatim event dump | Curated summary + raw extract |
+| Cost | Bash-only, but very chatty | Bash for peers (cheap) + Haiku for summaries (~pennies per session) |
+| Eager load on SessionStart | Nothing | ~500 bytes of targeted breadcrumbs |
+| Wiki | Promised "Topics/" never built | Hubs auto-maintained across `Projects/`, `People/`, etc. |
+| Cross-session visibility | None | `/peers` and SessionStart injection |
+| Graph navigability | Often dangling | Append-only invariant + lint script |
 
 ## License
 

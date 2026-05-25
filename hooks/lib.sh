@@ -1,147 +1,138 @@
 #!/usr/bin/env bash
-# SuperMemory shared library — fast utility functions for hook scripts
-# https://github.com/sahil7992/supermemory
+# SuperMemory v2 — shared helpers
+# Sourced by all hooks. Provides: atomic writes, paths, jq sanity, peer-registry I/O.
 
-# Default vault path — override with SUPERMEMORY_VAULT_DIR env var
-SM_VAULT_DIR="${SUPERMEMORY_VAULT_DIR:-$HOME/Documents/Obsidian Vault/SuperMemory}"
+set -u
 
-sm_ensure_dirs() {
-  mkdir -p "$SM_VAULT_DIR/Sessions" "$SM_VAULT_DIR/Agents" "$SM_VAULT_DIR/Errors"
-}
+# --- Paths -------------------------------------------------------------------
 
-sm_state_file() {
-  echo "/tmp/supermemory_${1}"
-}
+SM_VAULT="${SUPERMEMORY_VAULT_DIR:-$HOME/Documents/Obsidian Vault}"
+SM_LOGS="$SM_VAULT/.logs"
+SM_PEERS="$HOME/.claude/sessions"
+SM_HOOKS_DIR="$HOME/.claude/hooks/supermemory"
+SM_PROMPT="$SM_HOOKS_DIR/summarizer.md"
 
-sm_lock_file() {
-  echo "/tmp/supermemory_${1}.lock"
-}
+# --- Locking ----------------------------------------------------------------
+# macOS has lockf; Linux has flock. Both wrap a command so file access serializes.
 
-sm_timestamp() {
-  date "+%H:%M:%S"
-}
-
-sm_datestamp() {
-  date "+%Y-%m-%d"
-}
-
-sm_datetime() {
-  date "+%Y-%m-%d %H:%M:%S"
-}
-
-sm_file_datetime() {
-  date "+%Y-%m-%d_%H-%M"
-}
-
-sm_truncate() {
-  local max="${2:-2000}"
-  local text="$1"
-  if [ "${#text}" -gt "$max" ]; then
-    echo "${text:0:$max}... [truncated]"
+sm_lock() {
+  local file="$1"; shift
+  if command -v lockf >/dev/null 2>&1; then
+    lockf -t 5 "$file" "$@"
+  elif command -v flock >/dev/null 2>&1; then
+    flock -w 5 "$file" "$@"
   else
-    echo "$text"
+    "$@"
   fi
 }
 
-sm_safe_append() {
-  # Atomic append via lockf (macOS) or flock (Linux)
-  local file="$1"
-  local content="$2"
-  local lock_file
-  lock_file="$(sm_lock_file "${3:-default}")"
-  if command -v lockf &>/dev/null; then
-    lockf -t 5 "$lock_file" bash -c "printf '%s\n' \"\$1\" >> \"\$2\"" _ "$content" "$file"
-  elif command -v flock &>/dev/null; then
-    flock -w 5 "$lock_file" bash -c "printf '%s\n' \"\$1\" >> \"\$2\"" _ "$content" "$file"
+# --- Atomic append ----------------------------------------------------------
+# Append content to a file under a lock. Creates parent dir if missing.
+sm_append() {
+  local file="$1"; shift
+  mkdir -p "$(dirname "$file")"
+  local lockfile="${file}.lock"
+  touch "$lockfile"
+  sm_lock "$lockfile" bash -c "cat >> '$file'" <<< "$*"
+}
+
+# --- Logging ----------------------------------------------------------------
+sm_log() {
+  mkdir -p "$SM_LOGS"
+  echo "[$(date +%Y-%m-%dT%H:%M:%S)] $*" >> "$SM_LOGS/$(date +%Y%m%d).log"
+}
+
+# --- JSON sanity ------------------------------------------------------------
+sm_have_jq() { command -v jq >/dev/null 2>&1; }
+
+sm_jq_field() {
+  if sm_have_jq; then jq -r "$1 // empty" 2>/dev/null; else cat >/dev/null; fi
+}
+
+# --- Transcript helpers -----------------------------------------------------
+sm_user_turn_count() {
+  local transcript="$1"
+  [ -r "$transcript" ] || { echo 0; return; }
+  if sm_have_jq; then
+    jq -s 'map(select(.type=="user" and ((.message.content|type)=="string") and ((.message.content|startswith("<"))|not))) | length' "$transcript" 2>/dev/null || echo 0
   else
-    printf '%s\n' "$content" >> "$file"
+    grep -c '"type":"user"' "$transcript" 2>/dev/null || echo 0
   fi
 }
 
-sm_read_state() {
-  local state_file
-  state_file="$(sm_state_file "$1")"
-  if [ -f "$state_file" ]; then
-    . "$state_file"
-    return 0
-  fi
-  return 1
+# --- Peer registry I/O ------------------------------------------------------
+sm_peer_file() { echo "$SM_PEERS/$1.json"; }
+
+sm_now_iso() { date -u +%Y-%m-%dT%H:%M:%SZ; }
+
+sm_peer_init() {
+  local session_id="$1" cwd="$2"
+  local file; file=$(sm_peer_file "$session_id")
+  mkdir -p "$SM_PEERS"
+  local now; now=$(sm_now_iso)
+  cat > "$file" <<JSON
+{
+  "session_id": "$session_id",
+  "cwd": "$cwd",
+  "started_at": "$now",
+  "last_active": "$now",
+  "last_prompt": "",
+  "topic": "",
+  "active_files": []
+}
+JSON
 }
 
-sm_write_state() {
-  # Values are single-quoted to handle spaces in paths (e.g., "Obsidian Vault")
-  local state_file
-  state_file="$(sm_state_file "$1")"
-  shift
-  for kv in "$@"; do
-    local key="${kv%%=*}"
-    local val="${kv#*=}"
-    echo "${key}='${val}'"
-  done > "$state_file"
+sm_peer_update() {
+  local session_id="$1" field="$2" value="$3"
+  local file; file=$(sm_peer_file "$session_id")
+  [ -f "$file" ] || return 0
+  sm_have_jq || return 0
+  local lockfile="${file}.lock"
+  touch "$lockfile"
+  sm_lock "$lockfile" bash -c "
+    tmp=\$(mktemp)
+    jq --arg v '$value' --arg t '$(sm_now_iso)' '.[\"$field\"]=\$v | .last_active=\$t' '$file' > \"\$tmp\" && mv \"\$tmp\" '$file'
+  "
 }
 
-sm_update_state_counter() {
-  local state_file
-  state_file="$(sm_state_file "$1")"
-  if [ -f "$state_file" ]; then
-    local count
-    count=$(grep '^EVENT_COUNT=' "$state_file" | sed "s/^EVENT_COUNT='//" | sed "s/'$//")
-    count=$((count + 1))
-    sed -i '' "s/^EVENT_COUNT=.*/EVENT_COUNT='$count'/" "$state_file" 2>/dev/null || \
-      sed -i "s/^EVENT_COUNT=.*/EVENT_COUNT='$count'/" "$state_file"
-  fi
+sm_peer_add_file() {
+  local session_id="$1" path="$2"
+  local file; file=$(sm_peer_file "$session_id")
+  [ -f "$file" ] || return 0
+  sm_have_jq || return 0
+  local lockfile="${file}.lock"
+  touch "$lockfile"
+  sm_lock "$lockfile" bash -c "
+    tmp=\$(mktemp)
+    jq --arg p '$path' --arg t '$(sm_now_iso)' '.active_files = ([.active_files[], \$p] | unique | .[-5:]) | .last_active=\$t' '$file' > \"\$tmp\" && mv \"\$tmp\" '$file'
+  "
 }
 
-sm_blockquote() {
-  echo "$1" | sed 's/^/> /'
+sm_peer_sweep() {
+  [ -d "$SM_PEERS" ] || return 0
+  local cutoff
+  cutoff=$(date -u -v-4H +%s 2>/dev/null || date -u -d '4 hours ago' +%s 2>/dev/null) || return 0
+  for f in "$SM_PEERS"/*.json; do
+    [ -f "$f" ] || continue
+    local mtime
+    mtime=$(stat -f %m "$f" 2>/dev/null || stat -c %Y "$f" 2>/dev/null) || continue
+    [ "$mtime" -lt "$cutoff" ] && rm -f "$f" "${f}.lock"
+  done
 }
 
-sm_tool_summary() {
-  local tool="$1"
-  local input="$2"
-  case "$tool" in
-    Read|Write|Edit)
-      echo "$input" | jq -r '.file_path // "(unknown)"' 2>/dev/null
-      ;;
-    Bash)
-      local cmd
-      cmd=$(echo "$input" | jq -r '.command // "(unknown)"' 2>/dev/null)
-      sm_truncate "$cmd" 200
-      ;;
-    Grep)
-      local pattern path
-      pattern=$(echo "$input" | jq -r '.pattern // ""' 2>/dev/null)
-      path=$(echo "$input" | jq -r '.path // "."' 2>/dev/null)
-      echo "/$pattern/ in $path"
-      ;;
-    Glob)
-      echo "$input" | jq -r '.pattern // "(unknown)"' 2>/dev/null
-      ;;
-    Agent)
-      echo "$input" | jq -r '.description // "(unknown)"' 2>/dev/null
-      ;;
-    WebSearch)
-      echo "$input" | jq -r '.query // "(unknown)"' 2>/dev/null
-      ;;
-    WebFetch)
-      echo "$input" | jq -r '.url // "(unknown)"' 2>/dev/null
-      ;;
-    TaskCreate|TaskUpdate)
-      echo "$input" | jq -r '.subject // .taskId // "(task op)"' 2>/dev/null
-      ;;
-    SendMessage)
-      local to
-      to=$(echo "$input" | jq -r '.to // "?"' 2>/dev/null)
-      echo "to: $to"
-      ;;
-    Skill)
-      echo "$input" | jq -r '.skill // "(unknown)"' 2>/dev/null
-      ;;
-    *)
-      local summary
-      summary=$(echo "$input" | jq -r 'tostring' 2>/dev/null | head -c 200)
-      [ -z "$summary" ] && summary="(unknown)"
-      echo "$summary"
-      ;;
-  esac
+sm_peer_remove() {
+  local session_id="$1"
+  rm -f "$(sm_peer_file "$session_id")" "$(sm_peer_file "$session_id").lock"
+}
+
+# List active peers (excluding current session). One JSON object per line.
+sm_peer_list_others() {
+  local self="$1"
+  [ -d "$SM_PEERS" ] || return 0
+  for f in "$SM_PEERS"/*.json; do
+    [ -f "$f" ] || continue
+    [ "$(basename "$f" .json)" = "$self" ] && continue
+    cat "$f"
+  done
 }
