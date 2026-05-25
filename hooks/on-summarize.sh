@@ -134,6 +134,8 @@ EOF
   nohup claude -p "$PROMPT_TEXT" \
     --model claude-haiku-4-5 \
     --output-format text \
+    --permission-mode bypassPermissions \
+    --allowedTools "Read,Write,Edit,Glob,LS,Bash" \
     --add-dir "$EXTRACT_DIR" \
     --add-dir "$SM_VAULT" \
     >> "$SM_LOGS/$(date +%Y%m%d)-summarizer.log" 2>&1 &
