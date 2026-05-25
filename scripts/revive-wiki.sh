@@ -212,7 +212,7 @@ migrate_feedback() {
     local base
     base=$(basename "$f" .md | sed 's/^feedback-//')
     local title
-    title=$(echo "$base" | sed 's/-/ /g; s/.*/\u&/')
+    title=$(echo "$base" | sed 's/-/ /g' | awk '{for(i=1;i<=NF;i++) $i=toupper(substr($i,1,1)) substr($i,2)} 1')
     local target="$VAULT/Feedback/$title.md"
     [ -f "$target" ] && { echo "  [skip] Feedback/$title.md exists"; continue; }
     if [ "$DRY_RUN" = "1" ]; then echo "  [dry] would create $target"; continue; fi
