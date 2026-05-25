@@ -8,7 +8,7 @@ set -u
 
 SM_VAULT="${SUPERMEMORY_VAULT_DIR:-$HOME/Documents/Obsidian Vault}"
 SM_LOGS="$SM_VAULT/.logs"
-SM_PEERS="$HOME/.claude/sessions"
+SM_PEERS="$HOME/.claude/peers"
 SM_HOOKS_DIR="$HOME/.claude/hooks/supermemory"
 SM_PROMPT="$SM_HOOKS_DIR/summarizer.md"
 
