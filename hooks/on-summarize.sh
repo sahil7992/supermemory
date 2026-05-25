@@ -1,7 +1,9 @@
 #!/usr/bin/env bash
-# SuperMemory v2 -- summarization hook
+# SuperMemory v2 - summarization hook
 # Used by: SessionEnd, PreCompact, /recap slash command.
-# Reads hook JSON on stdin, spawns headless Haiku in background, returns immediately.
+# Strategy: pre-extract the .jsonl into a markdown raw dump (so headless Claude
+# can read it without needing access to ~/.claude/projects/), then spawn
+# headless Haiku to write the beautified summary + Index/hub appends.
 
 set -u
 
@@ -19,7 +21,7 @@ TRIGGER="${TRIGGER:-manual}"
 
 sm_log "summarize: trigger=$TRIGGER session=$SESSION_ID cwd=$CWD transcript=$TRANSCRIPT"
 
-# Sanity: need a real transcript path.
+# Sanity: need a real transcript.
 if [ -z "$TRANSCRIPT" ] || [ ! -r "$TRANSCRIPT" ]; then
   sm_log "summarize: no readable transcript, skipping"
   exit 0
@@ -45,26 +47,98 @@ if [ ! -r "$PROMPT_FILE" ]; then
   exit 0
 fi
 
-# Build the prompt with substituted env. Read the template, prepend env context.
+# --- Pre-extract: convert .jsonl into a readable markdown dump ---------------
+# We write the raw extract directly to the vault (it IS the _raw.md output).
+# The headless summarizer reads it from /tmp instead of the original .jsonl.
+
+EXTRACT_DIR="/tmp/supermemory-extracts"
+mkdir -p "$EXTRACT_DIR"
+EXTRACT="$EXTRACT_DIR/sm-extract-$SESSION_ID.md"
+
+DATE_TAG=$(date +%Y-%m-%d)
+
+# jq filter: turn each user/assistant/tool_use line into a readable section.
+jq -r --arg sid "$SESSION_ID" --arg cwd "$CWD" --arg trig "$TRIGGER" '
+  if (.type == "user" and (.message.content | type) == "string"
+      and (.message.content | startswith("<") | not)
+      and (.message.content | length > 0)) then
+    "## [" + (.timestamp[11:16]) + "] user\n" + .message.content + "\n"
+
+  elif (.type == "user" and (.message.content | type) == "array") then
+    (.message.content | map(select(.type == "tool_result") | "- tool_result (" + (.tool_use_id // "?")[0:8] + ")") | join("\n")) as $tr
+    | if ($tr | length) > 0 then "## [" + (.timestamp[11:16]) + "] user (tool results)\n" + $tr + "\n" else empty end
+
+  elif .type == "assistant" then
+    "## [" + (.timestamp[11:16]) + "] assistant\n" +
+    (.message.content | map(
+      if .type == "text" then .text
+      elif .type == "tool_use" then
+        "- " + .name + ": " + (
+          if .input.file_path then .input.file_path
+          elif .input.command then (.input.command | tostring | .[0:120])
+          elif .input.pattern then (.input.pattern | tostring)
+          elif .input.path then .input.path
+          elif .input.url then .input.url
+          elif .input.query then (.input.query | tostring | .[0:120])
+          elif .input.description then (.input.description | tostring | .[0:80])
+          else (.input | keys | join(","))
+          end
+        )
+      else empty end
+    ) | join("\n")) + "\n"
+
+  else empty
+  end
+' "$TRANSCRIPT" > "$EXTRACT" 2>/dev/null || true
+
+if [ ! -s "$EXTRACT" ]; then
+  sm_log "summarize: extract is empty, skipping"
+  exit 0
+fi
+
+# Prepend frontmatter to the extract file.
+TMP_EXTRACT=$(mktemp)
+{
+  echo "---"
+  echo "type: raw"
+  echo "date: $DATE_TAG"
+  echo "session_id: $SESSION_ID"
+  echo "cwd: $CWD"
+  echo "trigger: $TRIGGER"
+  echo "---"
+  echo ""
+  echo "# Raw extract: $SESSION_ID"
+  echo ""
+  cat "$EXTRACT"
+} > "$TMP_EXTRACT" && mv "$TMP_EXTRACT" "$EXTRACT"
+
+sm_log "summarize: extract written ($(wc -c < "$EXTRACT") bytes) at $EXTRACT"
+
+# --- Spawn headless Haiku ----------------------------------------------------
+# Pass the extract path (in /tmp, which is in the default sandbox) and add-dir
+# the vault so the writer can land files there.
+
 PROMPT_TEXT=$(cat <<EOF
-TRANSCRIPT_PATH=$TRANSCRIPT
+EXTRACT_PATH=$EXTRACT
 VAULT=$SM_VAULT
 TRIGGER=$TRIGGER
 SESSION_ID=$SESSION_ID
 CWD=$CWD
+DATE=$DATE_TAG
 
 $(cat "$PROMPT_FILE")
 EOF
 )
 
-# Spawn detached headless Haiku. Don't block the hook.
 (
   nohup claude -p "$PROMPT_TEXT" \
     --model claude-haiku-4-5 \
     --output-format text \
+    --add-dir "$EXTRACT_DIR" \
+    --add-dir "$SM_VAULT" \
     >> "$SM_LOGS/$(date +%Y%m%d)-summarizer.log" 2>&1 &
   disown 2>/dev/null || true
 )
 
-sm_log "summarize: spawned headless summarizer (turns=$TURNS)"
+sm_log "summarize: spawned headless summarizer (turns=$TURNS, extract=$EXTRACT)"
 exit 0
