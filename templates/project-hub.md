@@ -9,11 +9,11 @@ tags: [project, {{tech-stack-tags}}]
 
 # {{Project name}}
 
-> {{One-line summary — what this project is and why it exists}}
+> {{One-line summary -- what this project is and why it exists}}
 
 ## Status
 
-{{Current state — what's live, what's in flight, what's blocked}}
+{{Current state -- what's live, what's in flight, what's blocked}}
 
 ## Tech stack
 
@@ -21,7 +21,7 @@ tags: [project, {{tech-stack-tags}}]
 
 ## Team
 
-- [[People/{{person}}]] — {{role}}
+- [[People/{{person}}]] -- {{role}}
 
 ## Recent sessions
 

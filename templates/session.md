@@ -6,13 +6,13 @@ status: {{in_progress | completed}}
 trigger: {{SessionEnd | PreCompact | manual}}
 ---
 
-# {{YYYY-MM-DD}} — {{Topic}}
+# {{YYYY-MM-DD}} -- {{Topic}}
 
 {{One-line summary suitable for Index.md, written as a blockquote}}
 
 ## What happened
 
-- Chronological list of what was done. Each bullet should be substantive — what was tried, what was learned, what was built.
+- Chronological list of what was done. Each bullet should be substantive -- what was tried, what was learned, what was built.
 
 ## Decisions made
 
@@ -37,8 +37,8 @@ trigger: {{SessionEnd | PreCompact | manual}}
 
 ## Connections
 
-- [[Projects/{{project}}]] — relevant project hub
-- [[People/{{person}}]] — anyone involved
-- [[Work/Tickets/{{ticket}}]] — ticket if applicable
-- [[Concepts/{{concept}}]] — domain concept touched
-- [[{{prior-session}}]] — prior session on same topic
+- [[Projects/{{project}}]] -- relevant project hub
+- [[People/{{person}}]] -- anyone involved
+- [[Work/Tickets/{{ticket}}]] -- ticket if applicable
+- [[Concepts/{{concept}}]] -- domain concept touched
+- [[{{prior-session}}]] -- prior session on same topic

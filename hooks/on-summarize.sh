@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# SuperMemory v2 — summarization hook
+# SuperMemory v2 -- summarization hook
 # Used by: SessionEnd, PreCompact, /recap slash command.
 # Reads hook JSON on stdin, spawns headless Haiku in background, returns immediately.
 

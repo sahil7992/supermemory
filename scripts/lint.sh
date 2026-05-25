@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# SuperMemory v2 — wiki health check
+# SuperMemory v2 -- wiki health check
 # Detects: dead wikilinks, orphan pages, stale hubs (no session ref in 30 days).
 
 set -u
@@ -9,7 +9,7 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 VAULT="$SM_VAULT"
 cd "$VAULT" 2>/dev/null || { echo "No vault at $VAULT"; exit 1; }
 
-echo "Lint — $VAULT"
+echo "Lint -- $VAULT"
 echo ""
 
 # All page filenames (without .md) inside the vault.

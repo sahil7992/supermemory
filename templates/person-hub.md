@@ -2,13 +2,13 @@
 type: person
 name: {{Full name}}
 role: {{Role / title}}
-relationship: {{How they relate to Sahil — coworker, manager, friend, etc.}}
+relationship: {{How they relate to Sahil -- coworker, manager, friend, etc.}}
 tags: [person]
 ---
 
 # {{Name}}
 
-> {{One-line summary — who they are and why they matter in Sahil's world}}
+> {{One-line summary -- who they are and why they matter in Sahil's world}}
 
 ## Context
 

@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# SuperMemory v2 — uninstaller
+# SuperMemory v2 -- uninstaller
 # Removes hooks + slash commands + settings.json hook entries.
 # Does NOT touch your vault content.
 
@@ -9,7 +9,7 @@ HOOKS_DST="$HOME/.claude/hooks/supermemory"
 CMDS_DST="$HOME/.claude/commands"
 SETTINGS="$HOME/.claude/settings.json"
 
-echo "SuperMemory v2 — uninstaller"
+echo "SuperMemory v2 -- uninstaller"
 echo ""
 
 # 1) Remove hooks dir.

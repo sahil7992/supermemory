@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# SuperMemory v2 — PreToolUse(Edit|Write) hook
+# SuperMemory v2 -- PreToolUse(Edit|Write) hook
 # Tracks files this session is editing for peer visibility.
 
 set -u

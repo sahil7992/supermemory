@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# SuperMemory v2 — SessionStart hook
+# SuperMemory v2 -- SessionStart hook
 # Outputs ~500-650 bytes of additionalContext: recent sessions + cwd-matching hub + active peers.
 
 set -u
@@ -34,7 +34,7 @@ if [ -n "$CWD" ] && [ -d "$PROJECTS_DIR" ]; then
       "$hub_dir"*)
         hub_name=$(basename "$hub" .md)
         hub_summary=$(grep -E '^> ' "$hub" 2>/dev/null | head -1 | sed 's/^> //')
-        HUB_LINE="  [[Projects/$hub_name]] — $hub_summary"
+        HUB_LINE="  [[Projects/$hub_name]] -- $hub_summary"
         break
         ;;
     esac
@@ -74,7 +74,7 @@ To recall: \`grep \$VAULT/SuperMemory/Index.md\` for keywords, then read the spe
 if sm_have_jq; then
   jq -n --arg c "$CONTEXT" '{hookSpecificOutput:{hookEventName:"SessionStart", additionalContext:$c}}'
 else
-  # Minimal fallback without jq — escape quotes.
+  # Minimal fallback without jq -- escape quotes.
   esc=$(echo "$CONTEXT" | sed 's/"/\\"/g; s/$/\\n/' | tr -d '\n')
   printf '{"hookSpecificOutput":{"hookEventName":"SessionStart","additionalContext":"%s"}}' "$esc"
 fi

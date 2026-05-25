@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# SuperMemory v2 — backfill summaries for the gap between latest Index entry and now.
+# SuperMemory v2 -- backfill summaries for the gap between latest Index entry and now.
 # Walks ~/.claude/projects/**/*.jsonl with mtime after the latest date in SuperMemory/Index.md,
 # fires on-summarize.sh against each. Sequential to avoid API thrashing.
 
@@ -21,7 +21,7 @@ if [ -z "$LAST_DATE" ]; then
   LAST_DATE=$(date -v-60d +%Y-%m-%d 2>/dev/null || date -d '60 days ago' +%Y-%m-%d)
 fi
 
-echo "Backfill — summarizing transcripts modified after $LAST_DATE"
+echo "Backfill -- summarizing transcripts modified after $LAST_DATE"
 echo ""
 
 # Convert LAST_DATE to epoch

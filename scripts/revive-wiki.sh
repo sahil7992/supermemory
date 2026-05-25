@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# SuperMemory v2 — wiki revival (one-shot)
+# SuperMemory v2 -- wiki revival (one-shot)
 # Walks ~/.claude/projects/-Users-sahilpambhar/memory/*.md and scaffolds wiki hubs.
 # Strategy: don't migrate content. Create stub hubs that REFERENCE Claude memory as source.
 # The auto-summarizer fills in "Recent sessions" over time as sessions touch each entity.
@@ -15,7 +15,7 @@ MEM="$HOME/.claude/projects/-Users-sahilpambhar/memory"
 TPL="$SCRIPT_DIR/../templates"
 DRY_RUN="${DRY_RUN:-0}"
 
-echo "Revive Wiki — SuperMemory v2"
+echo "Revive Wiki -- SuperMemory v2"
 echo "  Vault:  $VAULT"
 echo "  Memory: $MEM"
 echo "  Dry-run: $DRY_RUN"
@@ -254,18 +254,18 @@ This vault is the persistent knowledge layer for Sahil's Claude Code sessions. S
 
 ## Quick Links
 
-- [[index]] — Wiki catalog (all hub pages)
-- [[SuperMemory/Index]] — Chronological session log
-- [[People/Sahil Pambhar]] — About me
-- [[Projects/Curantis AI]] — Main project
-- [[Projects/KaalSync]] — Side project
-- [[log]] — Operations timeline
+- [[index]] -- Wiki catalog (all hub pages)
+- [[SuperMemory/Index]] -- Chronological session log
+- [[People/Sahil Pambhar]] -- About me
+- [[Projects/Curantis AI]] -- Main project
+- [[Projects/KaalSync]] -- Side project
+- [[log]] -- Operations timeline
 
 ## How it works
 
 1. **You work in Claude Code as normal.** Hooks run automatically in the background.
 2. **SessionEnd / PreCompact / `/recap`** triggers the headless summarizer (Haiku 4.5) to write a session file + update relevant hubs here.
-3. **SessionStart** injects a tiny breadcrumb so a new session knows what was just done — without dragging full history into context.
+3. **SessionStart** injects a tiny breadcrumb so a new session knows what was just done -- without dragging full history into context.
 4. **`/peers`** shows what other Claude sessions are doing right now (cross-tmux-pane visibility).
 
 Repo: <https://github.com/sahil7992/supermemory>

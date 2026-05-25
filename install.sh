@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# SuperMemory v2 — installer
+# SuperMemory v2 -- installer
 # Wires Claude Code hooks + slash commands + templates into the user's environment.
 # Usage: bash install.sh [vault_path]
 
@@ -11,7 +11,7 @@ HOOKS_DST="$HOME/.claude/hooks/supermemory"
 CMDS_DST="$HOME/.claude/commands"
 SETTINGS="$HOME/.claude/settings.json"
 
-echo "SuperMemory v2 — installer"
+echo "SuperMemory v2 -- installer"
 echo "  Repo:   $REPO_DIR"
 echo "  Vault:  $VAULT"
 echo ""

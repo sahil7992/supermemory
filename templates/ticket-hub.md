@@ -7,7 +7,7 @@ project: {{Project name}}
 tags: [ticket, {{project-tag}}]
 ---
 
-# {{Ticket ID}} — {{Title}}
+# {{Ticket ID}} -- {{Title}}
 
 > {{One-line summary of the ask}}
 
@@ -21,7 +21,7 @@ tags: [ticket, {{project-tag}}]
 
 ## Current state
 
-{{Where things are right now — done, in progress, blocked, next step}}
+{{Where things are right now -- done, in progress, blocked, next step}}
 
 ## Recent sessions
 
